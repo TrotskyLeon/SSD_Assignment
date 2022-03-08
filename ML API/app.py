@@ -1,12 +1,27 @@
-!pip install flask_restful #necessary to run in Google Colab, which i used
+#necessary to run in Google Colab, which i used
+!pip install flask_restful 
+!pip install kafka-python flask flask_cors
+
+kafka-topics --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic INFERENCE
+kafka-topics --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic EMAIL
+
+#Below is the real app.py
 from flask import Flask
 from flask_restful import reqparse, abort, Api, Resource
+from flask_cors import flask_cors
+from kafka import KafkaConsumer, KafkaProducer
 import pickle
 import numpy as np
+import json
 from model import NLPModel
 
 app = Flask(__name__)
 api = Api(app)
+
+TOPIC_NAME = "INFERENCE"
+KAFKA_SERVER = "localhost:9092"
+
+producer = KafkaProducer(bootstrap_servers = KAFKA_SERVER, api_version = (0, 11, 15))
 
 model = NLPModel()
 
@@ -44,6 +59,16 @@ class PredictSentiment(Resource):
         return output
 
 api.add_resource(PredictSentiment, '/')
+
+@app.route('/kafka/pushToConsumers', methods=['POST'])
+def kafkaProducer():
+    req = request.get_json()
+    json_payload = str.encode(json_dumps(req))
+    producer.send(TOPIC_NAME, json_payload)
+    producer.flush()
+    print("Data sent to consumer")
+    return jsonify({"message": "The prediction will also be sent to your email",
+        "status": "Pass"})
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -7,6 +7,7 @@ kafka-topics --create --zookeeper localhost:2181 --replication-factor 1 --partit
 
 #Below is the real app.py
 from flask import Flask
+from flask import request, jsonify
 from flask_restful import reqparse, abort, Api, Resource
 from flask_cors import flask_cors
 from kafka import KafkaConsumer, KafkaProducer
@@ -59,6 +60,19 @@ class PredictSentiment(Resource):
         return output
 
 api.add_resource(PredictSentiment, '/')
+
+#REST API for inputting user ID / email
+@app.route('/<string:username>/<string:useremail>', methods=['GET', 'POST'])
+    def user(username,useremail):
+        #returns JSON of username and email according to the URL
+        if request.method == 'GET':
+            return jsonify({'user name': username, 'e-mail address': useremail})
+
+        #changes and returns JSON of username and email depending on input on the request form
+        if request.method == 'POST':
+            username = request.form.get('username')
+            useremail = request.form.get('useremail')
+            return jsonify({'user name': username, 'e-mail address': useremail})
 
 @app.route('/kafka/pushToConsumers', methods=['POST'])
 def kafkaProducer():
